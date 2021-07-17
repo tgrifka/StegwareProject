@@ -75,6 +75,11 @@ if __name__ == '__main__':
         layers.MaxPooling2D(),
         layers.Flatten(),
         layers.Dense(128, activation='relu'),
+        # added to test if extra connections will begin proccess of determining DCT Patterns
+        layers.Dense(128, activation='relu'),
+        layers.Dense(128, activation='relu'),
+        layers.Dense(128, activation='relu'),
+        layers.Dense(128, activation='relu'),
         layers.Dense(num_classes)
     ])
 
