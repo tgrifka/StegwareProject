@@ -3,7 +3,7 @@ import math, re, os
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from kaggle_datasets import KaggleDatasets
+import kaggle as KaggleDatasets
 import tensorflow as tf
 import tensorflow.keras.layers as L
 import efficientnet.tfkeras as efn
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     GCS_DS_PATH = KaggleDatasets().get_gcs_path()
 
     # Configuration
-    EPOCHS = 10
+    EPOCHS = 5
     BATCH_SIZE = 16 * strategy.num_replicas_in_sync
 
     def append_path(pre):

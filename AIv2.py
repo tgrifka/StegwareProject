@@ -1,14 +1,11 @@
-import math, re, os
 import pathlib
 
-import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import tensorflow as tf
-import tensorflow.keras.layers as L
+
+from tensorflow.keras import layers
 import efficientnet.tfkeras as efn
-from sklearn import metrics
-from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
 
 
 """
@@ -18,46 +15,20 @@ from sklearn.model_selection import train_test_split
     The notebook can be found here:https://www.kaggle.com/saurabhmaydeo/notebook50d155db1c
 
 """
+
 if __name__ == '__main__':
-    strategy = tf.distribute.get_strategy()
-    AUTO = tf.data.experimental.AUTOTUNE
-
-    # Configuration
-    EPOCHS = 10
-    BATCH_SIZE = 16 * strategy.num_replicas_in_sync
-
     # reads in dataset
     data_dir = 'D:/Stegware/startingSet'
     data_dir = pathlib.Path(data_dir)
     image_count = len(list(data_dir.glob('*/*.jpg')))
     print(image_count)
 
-    batch_size = 32
+    batch_size = 16
     image_height = 512
     image_width = 512
-    """
-    def decode_image(filename, label=None, image_size=(512, 512)):
-        bits = tf.io.read_file(filename)
-        image = tf.image.decode_jpeg(bits, channels=3)
-        image = tf.cast(image, tf.float32) / 255.0
-        image = tf.image.resize(image, image_size)
 
-        if label is None:
-            return image
-        else:
-            return image, label
+    # creates the training set
 
-
-    def data_augment(image, label=None):
-        image = tf.image.random_flip_left_right(image)
-        image = tf.image.random_flip_up_down(image)
-
-        if label is None:
-            return image
-        else:
-            return image, label
-
-    """
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
         data_dir,
         validation_split=0.2,
@@ -76,78 +47,75 @@ if __name__ == '__main__':
         image_size=(image_height, image_width),
         batch_size=batch_size)
 
+    # prints class names - not needed but a nice feature
 
-    def build_lrfn(lr_start=0.00001, lr_max=0.000075,
-                   lr_min=0.000001, lr_rampup_epochs=20,
-                   lr_sustain_epochs=0, lr_exp_decay=.8):
-        lr_max = lr_max * strategy.num_replicas_in_sync
+    class_names = train_ds.class_names
+    print(class_names)
 
-        def lrfn(epoch):
-            if epoch < lr_rampup_epochs:
-                lr = (lr_max - lr_start) / lr_rampup_epochs * epoch + lr_start
-            elif epoch < lr_rampup_epochs + lr_sustain_epochs:
-                lr = lr_max
-            else:
-                lr = (lr_max - lr_min) * lr_exp_decay ** (epoch - lr_rampup_epochs - lr_sustain_epochs) + lr_min
-            return lr
+    # prints out something... I am not sure what exactly
 
-        return lrfn
+    for image_batch, labels_batch in train_ds:
+        print(image_batch.shape)
+        print(labels_batch.shape)
+        break
 
+    # brings the dataset into memory for faster performance
 
-    with strategy.scope():
-        model = tf.keras.Sequential([
-            efn.EfficientNetB3(
-                input_shape=(512, 512, 3),
-                weights='imagenet',
-                include_top=False
-            ),
-            L.GlobalAveragePooling2D(),
-            L.Dense(1, activation='sigmoid')
-        ])
+    AUTOTUNE = tf.data.AUTOTUNE
 
-        model.compile(
-            optimizer='adam',
-            loss='binary_crossentropy',
-            metrics=['accuracy']
-        )
-        model.summary()
+    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
-    #STEPS_PER_EPOCH = train_labels.shape[0] // BATCH_SIZE
+    # creates the model and normalizes the pixel information from 0-255 to 0-1
 
-    history = model.fit(
-        train_ds,
-        epochs=EPOCHS,
-        #     callbacks=[lr_schedule],
-        #     steps_per_epoch=STEPS_PER_EPOCH,
-        validation_data=val_ds
-    )
+    num_classes = 4
 
-    model.save("model.h5")
+    model = Sequential([
+        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(image_height, image_width, 3)),
+        efn.EfficientNetB3(
+            input_shape=(512, 512, 3),
+            weights='imagenet',
+            include_top=False
+        ),
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(1, activation='sigmoid')
+    ])
 
+    # compiles the model
 
-    def display_training_curves(training, validation, title, subplot):
-        """
-        Source: https://www.kaggle.com/mgornergoogle/getting-started-with-100-flowers-on-tpu
-        """
-        if subplot % 10 == 1:  # set up the subplots on the first call
-            plt.subplots(figsize=(10, 10), facecolor='#F0F0F0')
-            plt.tight_layout()
-        ax = plt.subplot(subplot)
-        ax.set_facecolor('#F8F8F8')
-        ax.plot(training)
-        ax.plot(validation)
-        ax.set_title('model ' + title)
-        ax.set_ylabel(title)
-        # ax.set_ylim(0.28,1.05)
-        ax.set_xlabel('epoch')
-        ax.legend(['train', 'valid.'])
+    model.compile(optimizer='adam',
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
 
+    # views all layers of the model
 
-    display_training_curves(
-        history.history['loss'],
-        history.history['val_loss'],
-        'loss', 211)
-    display_training_curves(
-        history.history['accuracy'],
-        history.history['val_accuracy'],
-        'accuracy', 212)
+    model.summary()
+
+    # trains the model with a set number of epochs
+
+    epochs = 5
+    history = model.fit(train_ds, validation_data=val_ds, epochs=epochs)
+
+    # displays the Training Accuracy
+
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    epochs_range = range(epochs)
+
+    plt.figure(figsize=(8, 8))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, acc, label='Training Accuracy')
+    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+    plt.legend(loc='lower right')
+    plt.title('Training and Validation Accuracy')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, loss, label='Training Loss')
+    plt.plot(epochs_range, val_loss, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
+    plt.show()
