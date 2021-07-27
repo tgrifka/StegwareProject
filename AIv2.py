@@ -23,7 +23,7 @@ if __name__ == '__main__':
     image_count = len(list(data_dir.glob('*/*.jpg')))
     print(image_count)
 
-    batch_size = 16
+    batch_size = 8
     image_height = 512
     image_width = 512
 
@@ -68,11 +68,11 @@ if __name__ == '__main__':
 
     # creates the model and normalizes the pixel information from 0-255 to 0-1
 
-    num_classes = 4
+    num_classes = 2
 
     model = Sequential([
         layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(image_height, image_width, 3)),
-        efn.EfficientNetB3(
+        efn.EfficientNetB7(
             input_shape=(512, 512, 3),
             weights='imagenet',
             include_top=False
