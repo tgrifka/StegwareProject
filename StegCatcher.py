@@ -17,10 +17,9 @@ def main():
     image_height = 512
     image_width = 512
 
+    global model
+
     def load_model():
-
-        global model
-
         json_file = open('model.json', 'r')
         model_json = json_file.read()
         model = model_from_json(model_json)
@@ -78,22 +77,18 @@ def main():
         layers.GlobalAveragePooling2D(),
         layers.Dense(1, activation='sigmoid')
     ])
-    checkpoint_path = 'D:\Stegware\StegwareProject\\training_checkpoints\\combind.data-00000-of-00001'
+    checkpoint_path = 'D:\\Stegware\\StegwareProject\\training_checkpoints\\1'
     checkpoint_dir = os.path.dirname(checkpoint_path)
     model.load_weights(checkpoint_path)
 
     def run(path):
         if os.path.isdir(path):
-            data_dir = pathlib.Path('D:\Stegware\FeatureTesting')
+            data_dir = pathlib.Path(path)
             ds = tf.keras.preprocessing.image_dataset_from_directory(
                 data_dir,
-                validation_split=0.2,
-                subset="training",
-                seed=123,
-                image_size=(image_height, image_width),
-                batch_size=4)
-        res = model.predict(ds)
-        print(res)
+                image_size=(image_height, image_width))
+        res = model.predict(ds, verbose=1)
+        print(res.)
 
     run_btn = tk.Button(button_frame, text='Run', background='#0ba6a3', foreground='#142c2b', width='12',
                         command=lambda: run(input_e.get()))
