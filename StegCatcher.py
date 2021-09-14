@@ -88,7 +88,12 @@ def main():
                 data_dir,
                 image_size=(image_height, image_width))
         res = model.predict(ds, verbose=1)
-        print(res.)
+        print(res)
+        counter = 0
+        for i in res:
+            if i > 0.5:
+                counter += 1
+        print(counter)
 
     run_btn = tk.Button(button_frame, text='Run', background='#0ba6a3', foreground='#142c2b', width='12',
                         command=lambda: run(input_e.get()))
