@@ -1,7 +1,9 @@
+import glob
 import tkinter as tk
+from datetime import datetime
 from tkinter.filedialog import askdirectory, askopenfilenames
 import pathlib
-
+import cv2
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
@@ -11,12 +13,11 @@ from tensorflow.keras import layers
 import efficientnet.tfkeras as efn
 from tensorflow.keras.models import Sequential
 
+IMAGE_HEIGHT = 512
+IMAGE_WIDTH = 512
+
 
 def main():
-
-    image_height = 512
-    image_width = 512
-
     global model
 
     def load_model():
@@ -33,8 +34,6 @@ def main():
         else:
             file = askopenfilenames(filetypes=files, defaultextension=files)
         input_e.insert(0, file)
-
-
 
     window = tk.Tk()
     window.title("StegCatcher")
@@ -68,7 +67,7 @@ def main():
     """
 
     model = Sequential([
-        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(image_height, image_width, 3)),
+        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
         efn.EfficientNetB7(
             input_shape=(512, 512, 3),
             weights='imagenet',
@@ -77,29 +76,39 @@ def main():
         layers.GlobalAveragePooling2D(),
         layers.Dense(1, activation='sigmoid')
     ])
-    checkpoint_path = 'D:\\Stegware\\StegwareProject\\training_checkpoints\\1'
+    checkpoint_path = 'D:\\Stegware\\StegwareProject\\training_checkpoints\\3\\3'
     checkpoint_dir = os.path.dirname(checkpoint_path)
     model.load_weights(checkpoint_path)
 
     def run(path):
         if os.path.isdir(path):
-            data_dir = pathlib.Path(path)
-            ds = tf.keras.preprocessing.image_dataset_from_directory(
-                data_dir,
-                image_size=(image_height, image_width))
-        res = model.predict(ds, verbose=1)
-        print(res)
-        counter = 0
-        for i in res:
-            if i > 0.5:
-                counter += 1
-        print(counter)
+            time = datetime.now()
+            files = glob.glob(path + "\\*.jpg")
+            print(files)
+            for f in files:
+                ds = prepare(f)
+                res = model.predict(ds, verbose=1)
+                print(path + ": " + str(res[0]))
+            time = datetime.now()-time
+            print(f"Time to Complete: {time.seconds} second(s)")
+        else:
+            time = datetime.now()
+            ds = prepare(path)
+            res = model.predict(ds, verbose=1)
+            print(path + ": " + str(res[0]))
+            time = datetime.now() - time
+            print(f"Time to Complete: {time.seconds} second(s)")
 
     run_btn = tk.Button(button_frame, text='Run', background='#0ba6a3', foreground='#142c2b', width='12',
                         command=lambda: run(input_e.get()))
     run_btn.grid(column=1, row=0, sticky='s', padx=5, pady=5)
 
     window.mainloop()
+
+
+def prepare(filepath):
+    img_array = cv2.imread(filepath, cv2.IMREAD_COLOR)
+    return img_array.reshape(-1, IMAGE_HEIGHT, IMAGE_WIDTH, 3)
 
 
 if __name__ == '__main__':
