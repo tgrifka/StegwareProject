@@ -81,8 +81,6 @@ if __name__ == '__main__':
 
     # creates the model and normalizes the pixel information from 0-255 to 0-1
 
-    num_classes = 2
-
     model = Sequential([
         layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(image_height, image_width, 3)),
         efn.EfficientNetB7(

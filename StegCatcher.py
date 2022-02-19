@@ -76,21 +76,24 @@ def main():
         layers.GlobalAveragePooling2D(),
         layers.Dense(1, activation='sigmoid')
     ])
-    checkpoint_path = 'D:\\Stegware\\StegwareProject\\training_checkpoints\\3\\3'
+    checkpoint_path = 'D:\\Stegware\\StegwareProject\\training_checkpoints\\4\\4'
     checkpoint_dir = os.path.dirname(checkpoint_path)
     model.load_weights(checkpoint_path)
 
     def run(path):
         if os.path.isdir(path):
             time = datetime.now()
-            files = glob.glob(path + "\\*.jpg")
-            print(files)
+            files = glob.glob(path + "\\*\\*.jpg")
+            c = 0
             for f in files:
                 ds = prepare(f)
                 res = model.predict(ds, verbose=1)
-                print(path + ": " + str(res[0]))
+                print(f + ": " + str(res[0]))
+                if res[0] > 0.5:
+                    c += 1
             time = datetime.now()-time
             print(f"Time to Complete: {time.seconds} second(s)")
+            print(c)
         else:
             time = datetime.now()
             ds = prepare(path)
